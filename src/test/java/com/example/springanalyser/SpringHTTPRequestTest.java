@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration()
 @ContextConfiguration(classes = ConfigurationProxy.class)
-class SpringConfigurationWebRequestTest {
+class SpringHTTPRequestTest {
 
     @Autowired
     private WebApplicationContext wac;
