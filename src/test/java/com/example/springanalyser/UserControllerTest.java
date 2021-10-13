@@ -14,6 +14,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -46,8 +49,24 @@ class UserControllerTest {
         whenLoginThenReturnWelcomeMessage("Alice");
     }
 
+
     @Test
-    void whenLoginThenReturnWelcomeMessage_fiveParallelConnexions() throws Exception {
+    void whenLoginThenReturnWelcomeMessage_fiveParallelConnexions_ExecutorService() {
+
+        ExecutorService service = Executors.newFixedThreadPool(10);
+        Stream.of("Bob", "Alice", "Bert", "Robert", "Jeff")
+                .forEach(userName -> service.submit(() -> {
+                    try {
+                        whenLoginThenReturnWelcomeMessage(userName);
+                    } catch (Exception | Error e) {
+                        throw new RuntimeException(e);
+                    }
+                }));
+
+    }
+
+    @Test
+    void whenLoginThenReturnWelcomeMessage_fiveParallelConnexions_MultiThreadThrowableExceptionsHandler() throws Exception {
 
         MultiThreadThrowableExceptionsHandler exceptionsHandler = new MultiThreadThrowableExceptionsHandler();
 
