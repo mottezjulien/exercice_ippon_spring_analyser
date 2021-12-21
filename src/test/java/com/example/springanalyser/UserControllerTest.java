@@ -1,6 +1,5 @@
 package com.example.springanalyser;
 
-import com.example.springanalyser.multithread.MultiThreadThrowableExceptionsHandler;
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +12,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
@@ -26,7 +24,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(SpringExtension.class)
 @WebAppConfiguration()
 @ContextConfiguration(classes = Configuration.class)
-class UserControllerTest {
+public class UserControllerTest {
+
+    interface Result { }
+
+    class ResultSuccess implements Result { }
+
+    class ResultFailure implements Result {
+        Exception exception;
+        public ResultFailure(Exception exception) {
+            this.exception = exception;
+        }
+    }
 
     @Autowired
     private WebApplicationContext wac;
@@ -49,39 +58,32 @@ class UserControllerTest {
         whenLoginThenReturnWelcomeMessage("Alice");
     }
 
-
     @Test
-    void whenLoginThenReturnWelcomeMessage_fiveParallelConnexions_ExecutorService() {
+    void whenLoginThenReturnWelcomeMessage_parallelConnexions_ExecutorService() {
+        final int ANY_NB_THREADS = 3;
+        ExecutorService service = Executors.newFixedThreadPool(ANY_NB_THREADS);
 
-        ExecutorService service = Executors.newFixedThreadPool(10);
-        Stream.of("Bob", "Alice", "Bert", "Robert", "Jeff")
-                .forEach(userName -> service.submit(() -> {
+        Stream.of("Bob", "Alice", "Bert", "Robert", "Jeff", "Raoul", "Gertrude")
+                .map(userName -> service.submit(() -> {
                     try {
                         whenLoginThenReturnWelcomeMessage(userName);
-                    } catch (Exception | Error e) {
-                        throw new RuntimeException(e);
+                        return new ResultSuccess();
+                    } catch (Exception e) {
+                        return new ResultFailure(e);
                     }
-                }));
-
-    }
-
-    @Test
-    void whenLoginThenReturnWelcomeMessage_fiveParallelConnexions_MultiThreadThrowableExceptionsHandler() throws Exception {
-
-        MultiThreadThrowableExceptionsHandler exceptionsHandler = new MultiThreadThrowableExceptionsHandler();
-
-        List.of("Bob", "Alice", "Bert", "Robert", "Jeff")
-                .stream()
-                .forEach(userName -> exceptionsHandler.add(() -> {
+                }))
+                .forEach(future -> {
                     try {
-                        whenLoginThenReturnWelcomeMessage(userName);
-                    } catch (Exception | Error e) {
+                        Result result = future.get();
+                        if (result instanceof ResultFailure) {
+                            throw new RuntimeException(((ResultFailure) result).exception);
+                        }
+                    } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
-                }));
-        exceptionsHandler.execUntilEnd();
+                });
+        service.shutdown();
     }
-
 
     private void whenLoginThenReturnWelcomeMessage(String userName) throws Exception {
         mockMvc.perform(get("/user/login/" + userName))
