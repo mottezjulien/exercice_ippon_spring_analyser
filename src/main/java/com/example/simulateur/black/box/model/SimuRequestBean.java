@@ -1,11 +1,9 @@
 package com.example.simulateur.black.box.model;
 
 import com.example.ReflexivityUtils;
-import com.example.simulateur.black.box.RequestScopeHandler;
 import org.springframework.cglib.proxy.Enhancer;
 import org.springframework.cglib.proxy.InvocationHandler;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 
